@@ -1,3 +1,9 @@
+"""CSC111 Project 2: Recommendation and explanation algorithms.
+
+This module computes movie recommendations from seed movies or user
+preferences, and computes person similarity and recommendation explanations.
+"""
+
 from __future__ import annotations
 from typing import Optional, List, Tuple, Dict
 from graph_models import Graph
@@ -6,6 +12,15 @@ from graph_models import Graph
 def recommend_movies(graph: Graph,
                      seed_movie: str,
                      limit: int = 10) -> List[Tuple[str, float]]:
+    """Return top movie recommendations similar to seed_movie.
+
+    Recommendations are ranked by descending similarity score, then by movie
+    title as a tie-breaker.
+
+    Preconditions:
+    - seed_movie is in graph
+    - limit >= 0
+    """
     seed_vertex = graph.get_vertex(seed_movie)
 
     all_movies = graph.get_all_vertices(kind='movie')
@@ -47,6 +62,14 @@ def recommend_by_people(graph: Graph,
                         favorite_writers: Optional[List[str]] = None,
                         preferred_genres: Optional[List[str]] = None,
                         limit: int = 10) -> List[Tuple[str, float]]:
+    """Return movie recommendations based on favorite people and genres.
+
+    Scores are accumulated using weighted matches for actors, directors,
+    writers, and genres.
+
+    Preconditions:
+    - limit >= 0
+    """
     if favorite_actors is None:
         favorite_actors = []
     if favorite_directors is None:
@@ -134,6 +157,14 @@ def recommend_by_people(graph: Graph,
 def find_similar_people(graph: Graph,
                         person_name: str,
                         limit: int = 5) -> List[Tuple[str, float]]:
+    """Return people similar to person_name by shared movie overlap.
+
+    Similarity uses a Jaccard-style ratio over movies connected to each person.
+
+    Preconditions:
+    - person_name is in graph
+    - limit >= 0
+    """
     person = graph.get_vertex(person_name)
 
     all_people = graph.get_all_vertices(kind='person')
@@ -191,6 +222,15 @@ def find_similar_people(graph: Graph,
 def get_recommendation_explanation(graph: Graph,
                                   seed_movie: str,
                                   recommended_movie: str) -> Dict[str, List[str]]:
+    """Return shared actors/directors/writers/genres for two movies.
+
+    The returned dictionary has keys 'actors', 'directors', 'writers', and
+    'genres', each mapped to a list of shared values.
+
+    Preconditions:
+    - seed_movie is in graph
+    - recommended_movie is in graph
+    """
     seed = graph.get_vertex(seed_movie)
     rec = graph.get_vertex(recommended_movie)
 

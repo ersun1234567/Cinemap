@@ -1,3 +1,10 @@
+"""CSC111 Project 2: Cinemap main runner.
+
+This module provides a simple text-based interface for loading the IMDb-based
+graph and exploring recommendations, person similarity, and graph
+visualizations.
+"""
+
 from data_loader import load_imdb_data
 from graph_models import Graph
 from recommendation import (
@@ -12,6 +19,11 @@ def main(min_year: int = 2000,
          max_movies: int = 200,
          max_people: int = 500,
          min_movies_per_person: int = 3) -> None:
+    """Run the Cinemap command-line interface.
+
+    The parameters control dataset filtering and graph size before user
+    interaction begins.
+    """
     print("-" * 50)
     print("Cinemap Movie Discovery Tool")
     print("-" * 50)
@@ -48,6 +60,11 @@ def main(min_year: int = 2000,
 
 
 def _recommendation_mode(graph: Graph) -> None:
+    """Handle recommendation-by-seed-movie interaction for the user.
+
+    The user searches for a movie title, selects a match, and receives scored
+    recommendations with short explanations.
+    """
     movies = graph.get_all_vertices(kind='movie')
     if not movies:
         print("no movies in graph")
@@ -120,6 +137,11 @@ def _recommendation_mode(graph: Graph) -> None:
 
 
 def _people_mode(graph: Graph) -> None:
+    """Handle recommendation-by-favorite-people interaction.
+
+    The user provides favorite actors, directors, writers, and genres, then the
+    program computes matching movie recommendations.
+    """
     print("\nEnter favorite actors (comma separated, or press Enter to skip):")
     actors_input = input("> ")
     actors = []
@@ -169,6 +191,11 @@ def _people_mode(graph: Graph) -> None:
 
 
 def _similar_people_mode(graph: Graph) -> None:
+    """Handle person-similarity lookup interaction.
+
+    The user searches for a person, selects one match, and receives a ranked
+    list of similar people based on shared movie participation.
+    """
     people = graph.get_all_vertices(kind='person')
     if not people:
         print("No people in graph")
@@ -224,6 +251,11 @@ def _similar_people_mode(graph: Graph) -> None:
 
 
 def _visualization_mode(graph: Graph) -> None:
+    """Handle visualization-related interaction options.
+
+    The user can open either a full-graph view or a smaller neighborhood view
+    around a chosen movie or person.
+    """
     print("\nVisualization options:")
     print("1. Full graph")
     print("2. Movie network")

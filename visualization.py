@@ -1,3 +1,9 @@
+"""CSC111 Project 2: Graph visualization utilities.
+
+This module renders interactive visualizations of the project graph and movie
+recommendation subsets using NetworkX layouts and Plotly figures.
+"""
+
 import networkx as nx
 import plotly.graph_objects as go
 from typing import Optional, List, Tuple
@@ -9,6 +15,11 @@ def visualize_graph(graph: Graph,
                     center: Optional[str] = None,
                     max_vertices: int = 500,
                     output_file: str = '') -> None:
+    """Display or save an interactive graph visualization.
+
+    If center is provided, a local neighborhood around that item is visualized.
+    Otherwise, up to max_vertices from the full graph are shown.
+    """
     graph_nx = graph.to_networkx(max_vertices=max_vertices)
 
     if graph_nx.number_of_nodes() == 0:
@@ -72,6 +83,11 @@ def visualize_graph(graph: Graph,
 def visualize_recommendations(graph: Graph,
                               seed_movie: str,
                               recommendations: List[Tuple[str, float]]) -> None:
+    """Display a small graph focused on seed_movie and top recommendations.
+
+    The seed movie is highlighted, and up to the top five recommended movies
+    are included in the rendered subgraph.
+    """
     if len(recommendations) == 0:
         print("no recommendations to visualize")
         return

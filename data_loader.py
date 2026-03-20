@@ -1,9 +1,19 @@
+"""CSC111 Project 2: IMDb data loading utilities.
+
+This module loads and filters IMDb TSV datasets, then constructs a graph of
+movie and person vertices with edges representing participation relationships.
+"""
+
 import csv
 from typing import Optional
 from graph_models import Graph
 
 
 def _open_file(filepath: str):
+    """Return an open file handle for filepath.
+
+    This helper centralizes file opening to make I/O calls easier to track.
+    """
     return open(filepath)
 
 
@@ -12,6 +22,18 @@ def load_imdb_data(min_year: int = 2000,
                    max_movies: int = 200,
                    max_people: int = 500,
                    min_movies_per_person: int = 3) -> Graph:
+    """Load IMDb data files and build a graph of movies and people.
+
+    The graph contains movie vertices and person vertices (actors, directors,
+    and writers), with edges connecting people to movies they worked on.
+
+    Preconditions:
+    - min_year >= 0
+    - min_votes >= 0
+    - max_movies > 0
+    - max_people > 0
+    - min_movies_per_person >= 0
+    """
     graph = Graph()
 
     basics_path = 'data/title.basics.tsv'
@@ -150,6 +172,15 @@ def load_imdb_data(min_year: int = 2000,
 
 
 def _load_movies(tsv_file: str, min_year: int, max_movies: Optional[int]) -> dict:
+    """Return movie records from tsv_file filtered by year.
+
+    The result maps each movie tconst to a dictionary containing title, start
+    year, and genres.
+
+    Preconditions:
+    - min_year >= 0
+    - max_movies is None or max_movies > 0
+    """
     movies = {}
 
     with _open_file(tsv_file) as f:
@@ -218,6 +249,14 @@ def _load_movies(tsv_file: str, min_year: int, max_movies: Optional[int]) -> dic
 
 
 def _filter_by_votes(tsv_file: str, movies: dict, min_votes: int) -> dict:
+    """Return subset of movies that meet a minimum vote threshold.
+
+    This function augments each returned movie dictionary with average rating
+    and vote count fields from the ratings dataset.
+
+    Preconditions:
+    - min_votes >= 0
+    """
     movies_with_ratings = {}
 
     with _open_file(tsv_file) as f:
@@ -285,6 +324,11 @@ def _filter_by_votes(tsv_file: str, movies: dict, min_votes: int) -> dict:
 
 
 def _load_people(tsv_file: str) -> dict:
+    """Return people records parsed from tsv_file.
+
+    The result maps each nconst to a dictionary containing primary name and
+    primary profession values.
+    """
     people = {}
 
     with _open_file(tsv_file) as f:
