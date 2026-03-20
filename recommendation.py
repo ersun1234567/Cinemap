@@ -9,6 +9,24 @@ from typing import Optional, List, Tuple, Dict
 from graph_models import Graph
 
 
+def _normalize_text(text: str) -> str:
+    """Return normalized text for matching names and labels."""
+    return ' '.join(text.strip().lower().split())
+
+
+def _normalize_genre(genre: str) -> str:
+    """Return normalized/canonical genre token."""
+    g = _normalize_text(genre)
+    aliases = {
+        'science fiction': 'sci-fi',
+        'sci fi': 'sci-fi',
+        'scifi': 'sci-fi',
+        'romcom': 'romance',
+        'rom-com': 'romance'
+    }
+    return aliases.get(g, g)
+
+
 def recommend_movies(graph: Graph,
                      seed_movie: str,
                      limit: int = 10) -> List[Tuple[str, float]]:
@@ -79,6 +97,11 @@ def recommend_by_people(graph: Graph,
     if preferred_genres is None:
         preferred_genres = []
 
+    favorite_actor_set = {_normalize_text(name) for name in favorite_actors if name.strip() != ''}
+    favorite_director_set = {_normalize_text(name) for name in favorite_directors if name.strip() != ''}
+    favorite_writer_set = {_normalize_text(name) for name in favorite_writers if name.strip() != ''}
+    preferred_genre_set = {_normalize_genre(genre) for genre in preferred_genres if genre.strip() != ''}
+
     all_movies = graph.get_all_vertices(kind='movie')
     movie_scores = []
 
@@ -93,48 +116,28 @@ def recommend_by_people(graph: Graph,
         for n in vertex.neighbours:
             if n.kind == 'person':
                 if n.subkind == 'actor':
-                    movie_actors.append(n.item)
+                    movie_actors.append(_normalize_text(n.item))
                 elif n.subkind == 'director':
-                    movie_directors.append(n.item)
+                    movie_directors.append(_normalize_text(n.item))
                 elif n.subkind == 'writer':
-                    movie_writers.append(n.item)
+                    movie_writers.append(_normalize_text(n.item))
 
-        for actor in favorite_actors:
-            actor_found = False
-            for ma in movie_actors:
-                if actor == ma:
-                    actor_found = True
-                    break
-            if actor_found:
+        for actor in favorite_actor_set:
+            if actor in movie_actors:
                 score += 1.0
 
-        for director in favorite_directors:
-            director_found = False
-            for md in movie_directors:
-                if director == md:
-                    director_found = True
-                    break
-            if director_found:
+        for director in favorite_director_set:
+            if director in movie_directors:
                 score += 4.0
 
-        for writer in favorite_writers:
-            writer_found = False
-            for mw in movie_writers:
-                if writer == mw:
-                    writer_found = True
-                    break
-            if writer_found:
+        for writer in favorite_writer_set:
+            if writer in movie_writers:
                 score += 6.0
 
         if 'genres' in vertex.attributes:
-            movie_genres = vertex.attributes['genres'].split(',')
-            for genre in preferred_genres:
-                genre_found = False
-                for mg in movie_genres:
-                    if genre == mg:
-                        genre_found = True
-                        break
-                if genre_found:
+            movie_genres = {_normalize_genre(g) for g in vertex.attributes['genres'].split(',') if g.strip() != ''}
+            for genre in preferred_genre_set:
+                if genre in movie_genres:
                     score += 3.0
 
         if score > 0:

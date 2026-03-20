@@ -14,6 +14,42 @@ from recommendation import (
 from visualization import visualize_graph, visualize_recommendations
 
 
+def _normalize_text(text: str) -> str:
+    """Return normalized user text for consistent matching.
+
+    Normalization trims surrounding whitespace, collapses inner whitespace,
+    and lowercases the string.
+    """
+    return ' '.join(text.strip().lower().split())
+
+
+def _normalize_genre(genre: str) -> str:
+    """Return a normalized/canonical genre token.
+
+    Supports common user variants like "science fiction", "sci fi", and
+    "rom-com".
+    """
+    g = _normalize_text(genre)
+    aliases = {
+        'science fiction': 'sci-fi',
+        'sci fi': 'sci-fi',
+        'scifi': 'sci-fi',
+        'romcom': 'romance',
+        'rom-com': 'romance'
+    }
+    return aliases.get(g, g)
+
+
+def _split_csv_input(text: str, is_genre: bool = False) -> list[str]:
+    """Split a comma-separated input line and normalize each non-empty token."""
+    result = []
+    for value in text.split(','):
+        token = _normalize_genre(value) if is_genre else _normalize_text(value)
+        if token:
+            result.append(token)
+    return result
+
+
 def main(min_year: int = 2000,
          min_votes: int = 1000,
          max_movies: int = 200,
@@ -71,11 +107,11 @@ def _recommendation_mode(graph: Graph) -> None:
         return
 
     print("\nEnter part of a movie title:")
-    search = input("> ").lower()
+    search = _normalize_text(input("> "))
 
     matches = []
     for m in movies:
-        if search in m.lower():
+        if search in _normalize_text(m):
             matches.append(m)
 
     if not matches:
@@ -142,33 +178,22 @@ def _people_mode(graph: Graph) -> None:
     The user provides favorite actors, directors, writers, and genres, then the
     program computes matching movie recommendations.
     """
-    print("\nEnter favorite actors (comma separated, or press Enter to skip):")
+    print("\nEnter favorite actors (comma-separated names, e.g., Tom Hanks, Emma Stone):")
     actors_input = input("> ")
-    actors = []
-    if actors_input:
-        for a in actors_input.split(','):
-            actors.append(a)
+    actors = _split_csv_input(actors_input)
 
-    print("Enter favorite directors (comma separated, or press Enter to skip):")
+    print("Enter favorite directors (comma-separated names, or press Enter to skip):")
     directors_input = input("> ")
-    directors = []
-    if directors_input:
-        for d in directors_input.split(','):
-            directors.append(d)
+    directors = _split_csv_input(directors_input)
 
-    print("Enter favorite writers (comma separated, or press Enter to skip):")
+    print("Enter favorite writers (comma-separated names, or press Enter to skip):")
     writers_input = input("> ")
-    writers = []
-    if writers_input:
-        for w in writers_input.split(','):
-            writers.append(w)
+    writers = _split_csv_input(writers_input)
 
-    print("Enter favorite genres (comma separated, or press Enter to skip):")
+    print("Enter favorite genres (comma-separated, e.g., drama, comedy, sci-fi, thriller):")
+    print("Tip: sci fi / science fiction / Sci-Fi are all accepted.")
     genres_input = input("> ")
-    genres = []
-    if genres_input:
-        for g in genres_input.split(','):
-            genres.append(g)
+    genres = _split_csv_input(genres_input, is_genre=True)
 
     if not (actors or directors or writers or genres):
         print("No preferences entered")
@@ -202,11 +227,11 @@ def _similar_people_mode(graph: Graph) -> None:
         return
 
     print("\nEnter part of a person's name:")
-    search = input("> ").lower()
+    search = _normalize_text(input("> "))
 
     matches = []
     for p in people:
-        if search in p.lower():
+        if search in _normalize_text(p):
             matches.append(p)
 
     if not matches:
@@ -268,10 +293,10 @@ def _visualization_mode(graph: Graph) -> None:
         visualize_graph(graph, max_vertices=300)
     elif choice == '2':
         movies = graph.get_all_vertices(kind='movie')
-        search = input("Enter movie title: ").lower()
+        search = _normalize_text(input("Enter movie title: "))
         matches = []
         for m in movies:
-            if search in m.lower():
+            if search in _normalize_text(m):
                 matches.append(m)
         if matches:
             visualize_graph(graph, center=matches[0], max_vertices=100)
@@ -279,10 +304,10 @@ def _visualization_mode(graph: Graph) -> None:
             print("Movie not found")
     elif choice == '3':
         people = graph.get_all_vertices(kind='person')
-        search = input("Enter person name: ").lower()
+        search = _normalize_text(input("Enter person name: "))
         matches = []
         for p in people:
-            if search in p.lower():
+            if search in _normalize_text(p):
                 matches.append(p)
         if matches:
             visualize_graph(graph, center=matches[0], max_vertices=100)

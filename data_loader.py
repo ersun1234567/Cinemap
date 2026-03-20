@@ -14,7 +14,7 @@ def _open_file(filepath: str):
 
     This helper centralizes file opening to make I/O calls easier to track.
     """
-    return open(filepath)
+    return open(filepath, encoding='utf-8', newline='')
 
 
 def load_imdb_data(min_year: int = 2000,
@@ -83,22 +83,18 @@ def load_imdb_data(min_year: int = 2000,
 
     print(f"added {movie_count} movies to graph")
 
-    print("loading people data")
-    all_people = _load_people(name_path)
-    print(f"loaded {len(all_people)} people from names file")
-
+    print("scanning principal cast/crew links")
     person_movie_count = {}
     connections = []
 
     with _open_file(principals_path) as f:
-        lines = f.readlines()
-        header = lines[0].split('\t')
+        reader = csv.reader(f, delimiter='\t')
+        header = next(reader)
         tconst_idx = header.index('tconst')
         nconst_idx = header.index('nconst')
         category_idx = header.index('category')
 
-        for line in lines[1:]:
-            row = line.split('\t')
+        for row in reader:
             if len(row) <= max(tconst_idx, nconst_idx, category_idx):
                 continue
 
@@ -124,6 +120,10 @@ def load_imdb_data(min_year: int = 2000,
             popular_nconsts.add(nconst)
 
     print(f"{len(popular_nconsts)} people have worked on at least {min_movies_per_person} movies")
+
+    print("loading people data")
+    all_people = _load_people(name_path, popular_nconsts)
+    print(f"loaded {len(all_people)} relevant people from names file")
 
     print("adding popular people to graph...")
     person_count = 0
@@ -184,8 +184,8 @@ def _load_movies(tsv_file: str, min_year: int, max_movies: Optional[int]) -> dic
     movies = {}
 
     with _open_file(tsv_file) as f:
-        lines = f.readlines()
-        header = lines[0].split('\t')
+        reader = csv.reader(f, delimiter='\t')
+        header = next(reader)
 
         # Strip newline characters from header
         header = [h.strip() for h in header]
@@ -211,12 +211,11 @@ def _load_movies(tsv_file: str, min_year: int, max_movies: Optional[int]) -> dic
             print("Warning: No genres column found in the file")
             genres_idx = -1  # Use -1 to indicate no genres column
 
-        for line in lines[1:]:
+        for row in reader:
             if max_movies is not None:
                 if len(movies) >= max_movies * 3:
                     break
 
-            row = line.split('\t')
             if len(row) <= max(tconst_idx, title_type_idx, primary_title_idx, start_year_idx):
                 continue
 
@@ -260,8 +259,8 @@ def _filter_by_votes(tsv_file: str, movies: dict, min_votes: int) -> dict:
     movies_with_ratings = {}
 
     with _open_file(tsv_file) as f:
-        lines = f.readlines()
-        header = lines[0].split('\t')
+        reader = csv.reader(f, delimiter='\t')
+        header = next(reader)
         header = [h.strip() for h in header]
 
         tconst_idx = header.index('tconst')
@@ -291,8 +290,7 @@ def _filter_by_votes(tsv_file: str, movies: dict, min_votes: int) -> dict:
             print("Warning: Could not find rating or votes columns")
             return movies_with_ratings
 
-        for line in lines[1:]:
-            row = line.split('\t')
+        for row in reader:
             if len(row) <= max(tconst_idx, avg_rating_idx, num_votes_idx):
                 continue
 
@@ -323,17 +321,19 @@ def _filter_by_votes(tsv_file: str, movies: dict, min_votes: int) -> dict:
     return movies_with_ratings
 
 
-def _load_people(tsv_file: str) -> dict:
+def _load_people(tsv_file: str, target_nconsts: Optional[set[str]] = None) -> dict:
     """Return people records parsed from tsv_file.
 
     The result maps each nconst to a dictionary containing primary name and
     primary profession values.
+
+    If target_nconsts is provided, only those nconst ids are loaded.
     """
     people = {}
 
     with _open_file(tsv_file) as f:
-        lines = f.readlines()
-        header = lines[0].split('\t')
+        reader = csv.reader(f, delimiter='\t')
+        header = next(reader)
         header = [h.strip() for h in header]
 
         nconst_idx = header.index('nconst')
@@ -353,15 +353,21 @@ def _load_people(tsv_file: str) -> dict:
             print("Warning: No profession column found")
             return people
 
-        for line in lines[1:]:
-            row = line.split('\t')
+        for row in reader:
             if len(row) <= max(nconst_idx, primary_name_idx, profession_idx):
                 continue
 
+            nconst = row[nconst_idx]
+            if target_nconsts is not None and nconst not in target_nconsts:
+                continue
+
             if row[profession_idx] != r'\N':
-                people[row[nconst_idx]] = {
+                people[nconst] = {
                     'primaryName': row[primary_name_idx],
                     'primaryProfession': row[profession_idx]
                 }
+
+                if target_nconsts is not None and len(people) >= len(target_nconsts):
+                    break
 
     return people
