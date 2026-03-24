@@ -41,7 +41,13 @@ def _normalize_genre(genre: str) -> str:
 
 
 def _split_csv_input(text: str, is_genre: bool = False) -> list[str]:
-    """Split a comma-separated input line and normalize each non-empty token."""
+    """Split a comma-separated input line and normalize each non-empty token.
+
+    If is_genre is True, genre aliases are applied during normalization.
+    Otherwise, standard text normalization is applied to each token.
+
+    Returns a list of non-empty, normalized tokens.
+    """
     result = []
     for value in text.split(','):
         token = _normalize_genre(value) if is_genre else _normalize_text(value)

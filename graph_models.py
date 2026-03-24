@@ -243,3 +243,16 @@ class Graph:
                     graph_nx.add_edge(item, neighbour.item)
 
         return graph_nx
+
+
+if __name__ == '__main__':
+    import doctest
+    import python_ta
+
+    doctest.testmod()
+
+    python_ta.check_all(config={
+        'extra-imports': ['networkx'],
+        'allowed-io': [],
+        'max-line-length': 120
+    })

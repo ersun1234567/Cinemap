@@ -1,0 +1,9 @@
+# CSC111 Project 2: Python libraries
+
+# Code checking and testing
+python-ta
+pytest
+
+# Data visualization and graph processing
+plotly
+networkx

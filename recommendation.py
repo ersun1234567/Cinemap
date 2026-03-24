@@ -309,3 +309,16 @@ def get_recommendation_explanation(graph: Graph,
                 explanation['genres'].append(g)
 
     return explanation
+
+
+if __name__ == '__main__':
+    import doctest
+    import python_ta
+
+    doctest.testmod()
+
+    python_ta.check_all(config={
+        'extra-imports': [],
+        'allowed-io': [],
+        'max-line-length': 120
+    })

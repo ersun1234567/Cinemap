@@ -85,8 +85,13 @@ def visualize_recommendations(graph: Graph,
                               recommendations: List[Tuple[str, float]]) -> None:
     """Display a small graph focused on seed_movie and top recommendations.
 
-    The seed movie is highlighted, and up to the top five recommended movies
+    The seed movie is highlighted in red, top recommendations in orange, and
+    other connected nodes in light blue. Up to the top five recommended movies
     are included in the rendered subgraph.
+
+    Preconditions:
+    - seed_movie is in graph
+    - each tuple in recommendations is (movie_name, similarity_score)
     """
     if len(recommendations) == 0:
         print("no recommendations to visualize")
@@ -160,3 +165,16 @@ def visualize_recommendations(graph: Graph,
                       yaxis=dict(showgrid=False, showticklabels=False))
 
     fig.show()
+
+
+if __name__ == '__main__':
+    import doctest
+    import python_ta
+
+    doctest.testmod()
+
+    python_ta.check_all(config={
+        'extra-imports': ['networkx', 'plotly.graph_objects'],
+        'allowed-io': ['visualize_graph', 'visualize_recommendations'],
+        'max-line-length': 120
+    })

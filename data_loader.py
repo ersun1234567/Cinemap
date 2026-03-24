@@ -328,6 +328,9 @@ def _load_people(tsv_file: str, target_nconsts: Optional[set[str]] = None) -> di
     primary profession values.
 
     If target_nconsts is provided, only those nconst ids are loaded.
+
+    Preconditions:
+    - tsv_file refers to a valid file path
     """
     people = {}
 
@@ -371,3 +374,16 @@ def _load_people(tsv_file: str, target_nconsts: Optional[set[str]] = None) -> di
                     break
 
     return people
+
+
+if __name__ == '__main__':
+    import doctest
+    import python_ta
+
+    doctest.testmod()
+
+    python_ta.check_all(config={
+        'extra-imports': ['csv'],
+        'allowed-io': ['_open_file', 'load_imdb_data', '_load_movies', '_filter_by_votes', '_load_people'],
+        'max-line-length': 120
+    })
