@@ -2,6 +2,11 @@
 
 This module loads and filters IMDb TSV datasets, then constructs a graph of
 movie and person vertices with edges representing participation relationships.
+
+Module Assumptions:
+- Input files follow IMDb TSV header conventions used by this project.
+- Movies are keyed by tconst and people are keyed by nconst in Graph.
+- Graph vertex item values are display labels and are allowed to repeat.
 """
 
 import csv
@@ -13,6 +18,9 @@ def _open_file(filepath: str):
     """Return an open file handle for filepath.
 
     This helper centralizes file opening to make I/O calls easier to track.
+
+    Preconditions:
+    - filepath refers to a readable text file
     """
     return open(filepath, encoding='utf-8', newline='')
 
@@ -33,6 +41,9 @@ def load_imdb_data(min_year: int = 2000,
     - max_movies > 0
     - max_people > 0
     - min_movies_per_person >= 0
+
+    Return Value:
+    - A Graph where movie keys are tconst and person keys are nconst.
     """
     graph = Graph()
 
@@ -76,9 +87,10 @@ def load_imdb_data(min_year: int = 2000,
                 'genres': movie_data['genres'],
                 'rating': rating,
                 'votes': votes
-            }
+            },
+            key=tconst
         )
-        movie_by_tconst[tconst] = movie_title
+        movie_by_tconst[tconst] = tconst
         movie_count += 1
 
     print(f"added {movie_count} movies to graph")
@@ -149,9 +161,10 @@ def load_imdb_data(min_year: int = 2000,
                     item=person_name,
                     kind='person',
                     subkind=subkind,
-                    attributes={'nconst': nconst}
+                    attributes={'nconst': nconst},
+                    key=nconst
                 )
-                person_by_nconst[nconst] = person_name
+                person_by_nconst[nconst] = nconst
                 person_count += 1
                 break
 
@@ -162,8 +175,8 @@ def load_imdb_data(min_year: int = 2000,
     for nconst, tconst, category in connections:
         if edge_count >= 10000:
             break
-        if nconst in person_by_nconst and tconst in movie_titles:
-            graph.add_edge(person_by_nconst[nconst], movie_titles[tconst])
+        if nconst in person_by_nconst and tconst in movie_by_tconst:
+            graph.add_edge(person_by_nconst[nconst], movie_by_tconst[tconst])
             edge_count += 1
 
     print(f"added {edge_count} edges")
@@ -180,6 +193,9 @@ def _load_movies(tsv_file: str, min_year: int, max_movies: Optional[int]) -> dic
     Preconditions:
     - min_year >= 0
     - max_movies is None or max_movies > 0
+
+    Return Value:
+    - dict[str, dict[str, object]] with keys by tconst.
     """
     movies = {}
 
@@ -255,6 +271,9 @@ def _filter_by_votes(tsv_file: str, movies: dict, min_votes: int) -> dict:
 
     Preconditions:
     - min_votes >= 0
+
+    Return Value:
+    - Subset of movies keyed by tconst with averageRating and numVotes added.
     """
     movies_with_ratings = {}
 
@@ -331,6 +350,9 @@ def _load_people(tsv_file: str, target_nconsts: Optional[set[str]] = None) -> di
 
     Preconditions:
     - tsv_file refers to a valid file path
+
+    Return Value:
+    - dict[str, dict[str, str]] keyed by nconst.
     """
     people = {}
 

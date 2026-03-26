@@ -1,2 +1,4 @@
 *.tsv
 data/
+.venv/
+__pycache__/

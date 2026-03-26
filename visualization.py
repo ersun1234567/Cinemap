@@ -2,6 +2,10 @@
 
 This module renders interactive visualizations of the project graph and movie
 recommendation subsets using NetworkX layouts and Plotly figures.
+
+Module Assumptions:
+- Graph node keys are internal identifiers; node labels are in Vertex.item.
+- The center argument, when provided, is a graph key (not a display label).
 """
 
 import networkx as nx
@@ -19,27 +23,48 @@ def visualize_graph(graph: Graph,
 
     If center is provided, a local neighborhood around that item is visualized.
     Otherwise, up to max_vertices from the full graph are shown.
+
+    Preconditions:
+    - max_vertices > 0
+
+    Side Effects:
+    - Displays an interactive Plotly figure or writes an HTML file.
     """
-    graph_nx = graph.to_networkx(max_vertices=max_vertices)
+    if center is None:
+        graph_nx = graph.to_networkx(max_vertices=max_vertices)
+    else:
+        try:
+            graph.get_vertex(center)
+        except KeyError:
+            print("requested center not found")
+            return
+
+        # Build a radius-2 neighbourhood around center before applying max size.
+        nodes_to_keep = {center}
+        first_hop = set(graph.get_neighbours(center))
+        nodes_to_keep.update(first_hop)
+        for n in first_hop:
+            nodes_to_keep.update(graph.get_neighbours(n))
+
+        graph_nx = nx.Graph()
+        for node in nodes_to_keep:
+            if graph_nx.number_of_nodes() >= max_vertices:
+                break
+            vertex = graph.get_vertex(node)
+            graph_nx.add_node(node)
+            graph_nx.nodes[node]['kind'] = vertex.kind
+            graph_nx.nodes[node]['subkind'] = vertex.subkind
+            for key, value in vertex.attributes.items():
+                graph_nx.nodes[node][key] = value
+
+        for node in list(graph_nx.nodes):
+            for neighbour in graph.get_neighbours(node):
+                if neighbour in graph_nx.nodes and node != neighbour:
+                    graph_nx.add_edge(node, neighbour)
 
     if graph_nx.number_of_nodes() == 0:
         print("no nodes to visualize")
         return
-
-    if center is not None:
-        if center in graph_nx.nodes:
-            nodes_to_keep = {center}
-            for n in graph_nx.neighbors(center):
-                nodes_to_keep.add(n)
-
-            temp_list = []
-            for n in nodes_to_keep:
-                temp_list.append(n)
-            for n in temp_list:
-                if n != center:
-                    for n2 in graph_nx.neighbors(n):
-                        nodes_to_keep.add(n2)
-            graph_nx = graph_nx.subgraph(nodes_to_keep)
 
     pos = nx.spring_layout(graph_nx)
 
@@ -62,7 +87,7 @@ def visualize_graph(graph: Graph,
         x, y = pos[node]
         node_x.append(x)
         node_y.append(y)
-        node_text.append(node)
+        node_text.append(str(graph.get_vertex(node).item))
 
     fig = go.Figure(data=[
         go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(width=0.5, color='gray'), hoverinfo='none'),
@@ -91,7 +116,10 @@ def visualize_recommendations(graph: Graph,
 
     Preconditions:
     - seed_movie is in graph
-    - each tuple in recommendations is (movie_name, similarity_score)
+    - each tuple in recommendations is (movie_key, similarity_score)
+
+    Side Effects:
+    - Displays an interactive Plotly figure.
     """
     if len(recommendations) == 0:
         print("no recommendations to visualize")
@@ -154,13 +182,17 @@ def visualize_recommendations(graph: Graph,
             else:
                 node_colors.append('lightblue')
 
+    node_labels = []
+    for node in graph_nx.nodes:
+        node_labels.append(str(graph.get_vertex(node).item))
+
     fig = go.Figure(data=[
         go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(width=0.5, color='gray'), hoverinfo='none'),
-        go.Scatter(x=node_x, y=node_y, mode='markers+text', text=nodes_to_include,
+        go.Scatter(x=node_x, y=node_y, mode='markers+text', text=node_labels,
                    textposition="top center", marker=dict(size=12, color=node_colors))
     ])
 
-    fig.update_layout(title=f'recommendations for: {seed_movie}',
+    fig.update_layout(title=f'recommendations for: {graph.get_vertex(seed_movie).item}',
                       xaxis=dict(showgrid=False, showticklabels=False),
                       yaxis=dict(showgrid=False, showticklabels=False))
 

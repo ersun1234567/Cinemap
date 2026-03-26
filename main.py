@@ -3,6 +3,10 @@
 This module provides a simple text-based interface for loading the IMDb-based
 graph and exploring recommendations, person similarity, and graph
 visualizations.
+
+Module Assumptions:
+- User-facing searches and prints use Vertex.item labels.
+- Recommendation and visualization calls operate on graph keys.
 """
 
 from data_loader import load_imdb_data
@@ -19,6 +23,9 @@ def _normalize_text(text: str) -> str:
 
     Normalization trims surrounding whitespace, collapses inner whitespace,
     and lowercases the string.
+
+    >>> _normalize_text('  Tom   Hanks ')
+    'tom hanks'
     """
     return ' '.join(text.strip().lower().split())
 
@@ -28,6 +35,9 @@ def _normalize_genre(genre: str) -> str:
 
     Supports common user variants like "science fiction", "sci fi", and
     "rom-com".
+
+    >>> _normalize_genre('Sci Fi')
+    'sci-fi'
     """
     g = _normalize_text(genre)
     aliases = {
@@ -47,6 +57,11 @@ def _split_csv_input(text: str, is_genre: bool = False) -> list[str]:
     Otherwise, standard text normalization is applied to each token.
 
     Returns a list of non-empty, normalized tokens.
+
+    >>> _split_csv_input('Tom Hanks,  Emma Stone')
+    ['tom hanks', 'emma stone']
+    >>> _split_csv_input('Sci Fi, rom-com', is_genre=True)
+    ['sci-fi', 'romance']
     """
     result = []
     for value in text.split(','):
@@ -65,6 +80,13 @@ def main(min_year: int = 2000,
 
     The parameters control dataset filtering and graph size before user
     interaction begins.
+
+    Preconditions:
+    - min_year >= 0
+    - min_votes >= 0
+    - max_movies > 0
+    - max_people > 0
+    - min_movies_per_person >= 0
     """
     print("-" * 50)
     print("Cinemap Movie Discovery Tool")
@@ -117,7 +139,8 @@ def _recommendation_mode(graph: Graph) -> None:
 
     matches = []
     for m in movies:
-        if search in _normalize_text(m):
+        label = str(graph.get_vertex(m).item)
+        if search in _normalize_text(label):
             matches.append(m)
 
     if not matches:
@@ -128,7 +151,7 @@ def _recommendation_mode(graph: Graph) -> None:
         print("\nMultiple matches:")
         index = 1
         for m in matches[:10]:
-            print(f"{index}. {m}")
+            print(f"{index}. {graph.get_vertex(m).item}")
             index = index + 1
 
         selection = input("Select number: ")
@@ -144,7 +167,7 @@ def _recommendation_mode(graph: Graph) -> None:
     else:
         selected = matches[0]
 
-    print(f"Finding recommendations for: {selected}")
+    print(f"Finding recommendations for: {graph.get_vertex(selected).item}")
     recs = recommend_movies(graph, selected, limit=10)
 
     if not recs:
@@ -157,7 +180,7 @@ def _recommendation_mode(graph: Graph) -> None:
         vertex = graph.get_vertex(movie)
         year = vertex.attributes.get('year', 'N/A')
         rating = vertex.attributes.get('rating', 'N/A')
-        print(f"{index}. {movie} ({year}) - {rating}* (score: {score:.1f})")
+        print(f"{index}. {vertex.item} ({year}) - {rating}* (score: {score:.1f})")
         index = index + 1
 
         exp = get_recommendation_explanation(graph, selected, movie)
@@ -217,7 +240,7 @@ def _people_mode(graph: Graph) -> None:
         vertex = graph.get_vertex(movie)
         year = vertex.attributes.get('year', 'N/A')
         rating = vertex.attributes.get('rating', 'N/A')
-        print(f"{index}. {movie} ({year}) - {rating}* (score: {score:.1f})")
+        print(f"{index}. {vertex.item} ({year}) - {rating}* (score: {score:.1f})")
         index = index + 1
 
 
@@ -237,7 +260,8 @@ def _similar_people_mode(graph: Graph) -> None:
 
     matches = []
     for p in people:
-        if search in _normalize_text(p):
+        label = str(graph.get_vertex(p).item)
+        if search in _normalize_text(label):
             matches.append(p)
 
     if not matches:
@@ -248,7 +272,7 @@ def _similar_people_mode(graph: Graph) -> None:
         print("\nMultiple matches:")
         index = 1
         for m in matches[:10]:
-            print(f"{index}. {m}")
+            print(f"{index}. {graph.get_vertex(m).item}")
             index = index + 1
 
         selection = input("Select number: ")
@@ -265,7 +289,7 @@ def _similar_people_mode(graph: Graph) -> None:
         selected = matches[0]
 
     vertex = graph.get_vertex(selected)
-    print(f"\n{selected} ({vertex.subkind})")
+    print(f"\n{vertex.item} ({vertex.subkind})")
 
     similar = find_similar_people(graph, selected, limit=10)
 
@@ -277,7 +301,7 @@ def _similar_people_mode(graph: Graph) -> None:
     index = 1
     for person, score in similar:
         p_vertex = graph.get_vertex(person)
-        print(f"{index}. {person} ({p_vertex.subkind}) - similarity: {score:.3f}")
+        print(f"{index}. {p_vertex.item} ({p_vertex.subkind}) - similarity: {score:.3f}")
         index = index + 1
 
 
@@ -302,7 +326,7 @@ def _visualization_mode(graph: Graph) -> None:
         search = _normalize_text(input("Enter movie title: "))
         matches = []
         for m in movies:
-            if search in _normalize_text(m):
+            if search in _normalize_text(str(graph.get_vertex(m).item)):
                 matches.append(m)
         if matches:
             visualize_graph(graph, center=matches[0], max_vertices=100)
@@ -313,7 +337,7 @@ def _visualization_mode(graph: Graph) -> None:
         search = _normalize_text(input("Enter person name: "))
         matches = []
         for p in people:
-            if search in _normalize_text(p):
+            if search in _normalize_text(str(graph.get_vertex(p).item)):
                 matches.append(p)
         if matches:
             visualize_graph(graph, center=matches[0], max_vertices=100)

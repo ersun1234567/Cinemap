@@ -2,6 +2,11 @@
 
 This module computes movie recommendations from seed movies or user
 preferences, and computes person similarity and recommendation explanations.
+
+Module Assumptions:
+- Graph movie/person keys are unique stable identifiers.
+- Vertex.item is used as the display label for user-facing output.
+- Tie-breaking for ranked lists is deterministic.
 """
 
 from __future__ import annotations
@@ -10,12 +15,22 @@ from graph_models import Graph
 
 
 def _normalize_text(text: str) -> str:
-    """Return normalized text for matching names and labels."""
+    """Return normalized text for matching names and labels.
+
+    >>> _normalize_text('  Emma   Stone ')
+    'emma stone'
+    """
     return ' '.join(text.strip().lower().split())
 
 
 def _normalize_genre(genre: str) -> str:
-    """Return normalized/canonical genre token."""
+    """Return normalized/canonical genre token.
+
+    >>> _normalize_genre('Science Fiction')
+    'sci-fi'
+    >>> _normalize_genre('rom-com')
+    'romance'
+    """
     g = _normalize_text(genre)
     aliases = {
         'science fiction': 'sci-fi',
@@ -25,6 +40,15 @@ def _normalize_genre(genre: str) -> str:
         'rom-com': 'romance'
     }
     return aliases.get(g, g)
+
+
+def _display_label(graph: Graph, item_key: str) -> str:
+    """Return the display label for a vertex key.
+
+    Preconditions:
+    - item_key is a vertex key in graph
+    """
+    return str(graph.get_vertex(item_key).item)
 
 
 def recommend_movies(graph: Graph,
@@ -38,6 +62,10 @@ def recommend_movies(graph: Graph,
     Preconditions:
     - seed_movie is in graph
     - limit >= 0
+
+        Return Value:
+        - list[(movie_key, similarity_score)] sorted by score descending,
+            then display label ascending, then key ascending.
     """
     seed_vertex = graph.get_vertex(seed_movie)
 
@@ -54,19 +82,7 @@ def recommend_movies(graph: Graph,
         if similarity > 0:
             recommendations.append((movie, similarity))
 
-    for i in range(len(recommendations)):
-        for j in range(i + 1, len(recommendations)):
-            if recommendations[i][1] < recommendations[j][1]:
-                temp_movie = recommendations[i][0]
-                temp_score = recommendations[i][1]
-                recommendations[i] = (recommendations[j][0], recommendations[j][1])
-                recommendations[j] = (temp_movie, temp_score)
-            elif recommendations[i][1] == recommendations[j][1]:
-                if recommendations[i][0] < recommendations[j][0]:
-                    temp_movie = recommendations[i][0]
-                    temp_score = recommendations[i][1]
-                    recommendations[i] = (recommendations[j][0], recommendations[j][1])
-                    recommendations[j] = (temp_movie, temp_score)
+    recommendations.sort(key=lambda pair: (-pair[1], _display_label(graph, pair[0]), pair[0]))
 
     result = []
     for i in range(min(limit, len(recommendations))):
@@ -87,6 +103,10 @@ def recommend_by_people(graph: Graph,
 
     Preconditions:
     - limit >= 0
+
+        Return Value:
+        - list[(movie_key, score)] sorted by score descending,
+            then display label ascending, then key ascending.
     """
     if favorite_actors is None:
         favorite_actors = []
@@ -143,13 +163,7 @@ def recommend_by_people(graph: Graph,
         if score > 0:
             movie_scores.append((movie, score))
 
-    for i in range(len(movie_scores)):
-        for j in range(i + 1, len(movie_scores)):
-            if movie_scores[i][1] < movie_scores[j][1]:
-                temp_movie = movie_scores[i][0]
-                temp_score = movie_scores[i][1]
-                movie_scores[i] = (movie_scores[j][0], movie_scores[j][1])
-                movie_scores[j] = (temp_movie, temp_score)
+    movie_scores.sort(key=lambda pair: (-pair[1], _display_label(graph, pair[0]), pair[0]))
 
     result = []
     for i in range(min(limit, len(movie_scores))):
@@ -167,16 +181,20 @@ def find_similar_people(graph: Graph,
     Preconditions:
     - person_name is in graph
     - limit >= 0
+
+        Return Value:
+        - list[(person_key, similarity)] sorted by score descending,
+            then display label ascending, then key ascending.
     """
     person = graph.get_vertex(person_name)
 
     all_people = graph.get_all_vertices(kind='person')
     similar_people = []
 
-    person_movies = []
+    person_movies = set()
     for n in person.neighbours:
         if n.kind == 'movie':
-            person_movies.append(n.item)
+            person_movies.add(n)
 
     if len(person_movies) == 0:
         return []
@@ -186,21 +204,13 @@ def find_similar_people(graph: Graph,
             continue
 
         other = graph.get_vertex(other_name)
-        other_movies = []
+        other_movies = set()
         for n in other.neighbours:
             if n.kind == 'movie':
-                other_movies.append(n.item)
+                other_movies.add(n)
 
         if len(other_movies) > 0:
-            intersection = 0
-            for m in person_movies:
-                movie_found = False
-                for om in other_movies:
-                    if m == om:
-                        movie_found = True
-                        break
-                if movie_found:
-                    intersection += 1
+            intersection = len(person_movies.intersection(other_movies))
 
             union = len(person_movies) + len(other_movies) - intersection
             similarity = intersection / union
@@ -208,13 +218,7 @@ def find_similar_people(graph: Graph,
             if similarity > 0:
                 similar_people.append((other_name, similarity))
 
-    for i in range(len(similar_people)):
-        for j in range(i + 1, len(similar_people)):
-            if similar_people[i][1] < similar_people[j][1]:
-                temp_person = similar_people[i][0]
-                temp_score = similar_people[i][1]
-                similar_people[i] = (similar_people[j][0], similar_people[j][1])
-                similar_people[j] = (temp_person, temp_score)
+    similar_people.sort(key=lambda pair: (-pair[1], _display_label(graph, pair[0]), pair[0]))
 
     result = []
     for i in range(min(limit, len(similar_people))):
@@ -233,6 +237,9 @@ def get_recommendation_explanation(graph: Graph,
     Preconditions:
     - seed_movie is in graph
     - recommended_movie is in graph
+
+    Return Value:
+    - Dictionary with keys 'actors', 'directors', 'writers', 'genres'.
     """
     seed = graph.get_vertex(seed_movie)
     rec = graph.get_vertex(recommended_movie)
