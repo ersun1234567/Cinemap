@@ -304,8 +304,8 @@ def get_recommendation_explanation(graph: Graph,
             explanation['writers'].append(w)
 
     if 'genres' in seed.attributes and 'genres' in rec.attributes:
-        seed_genres = seed.attributes['genres'].split(',')
-        rec_genres = rec.attributes['genres'].split(',')
+        seed_genres = [g.strip().lower() for g in seed.attributes['genres'].split(',')]
+        rec_genres = [g.strip().lower() for g in rec.attributes['genres'].split(',')]
         for g in seed_genres:
             genre_found = False
             for rg in rec_genres:
