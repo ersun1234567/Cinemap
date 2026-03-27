@@ -97,8 +97,8 @@ class Vertex:
 
         shared_genres = 0
         if 'genres' in self.attributes and 'genres' in other.attributes:
-            self_genres = self.attributes['genres'].split(',')
-            other_genres = other.attributes['genres'].split(',')
+            self_genres = [g.strip().lower() for g in self.attributes['genres'].split(',')]
+            other_genres = [g.strip().lower() for g in other.attributes['genres'].split(',')]
             for g in self_genres:
                 if g in other_genres and g != '':
                     shared_genres += 1
