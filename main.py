@@ -9,6 +9,8 @@ Module Assumptions:
 - Recommendation and visualization calls operate on graph keys.
 """
 
+import difflib
+
 from data_loader import load_imdb_data
 from graph_models import Graph
 from recommendation import (
@@ -28,6 +30,82 @@ def _normalize_text(text: str) -> str:
     'tom hanks'
     """
     return ' '.join(text.strip().lower().split())
+
+
+def _normalize_title_text(text: str) -> str:
+    """Return a punctuation-insensitive normalized title string.
+
+    This keeps alphanumeric characters and spaces, lowercases the text,
+    and collapses repeated whitespace.
+
+    >>> _normalize_title_text('The Wolf of Wall Street!')
+    'the wolf of wall street'
+    """
+    simplified = []
+    for ch in text.lower():
+        if ch.isalnum() or ch.isspace():
+            simplified.append(ch)
+        else:
+            simplified.append(' ')
+    return ' '.join(''.join(simplified).split())
+
+
+def _strip_leading_article(text: str) -> str:
+    """Return text without a leading common English article.
+
+    >>> _strip_leading_article('the wolf of wall street')
+    'wolf of wall street'
+    """
+    for prefix in ['the ', 'a ', 'an ']:
+        if text.startswith(prefix):
+            return text[len(prefix):]
+    return text
+
+
+def _movie_matches_query(title: str, query: str) -> bool:
+    """Return whether title matches query using robust title matching.
+
+    Matching checks normalized substring matching, article-stripped substring
+    matching, and token containment.
+    """
+    normalized_title = _normalize_title_text(title)
+    normalized_query = _normalize_title_text(query)
+
+    if normalized_query == '':
+        return False
+
+    if normalized_query in normalized_title:
+        return True
+
+    if normalized_query in _strip_leading_article(normalized_title):
+        return True
+
+    query_tokens = [token for token in normalized_query.split() if token not in {'the', 'a', 'an'}]
+    title_tokens = set(normalized_title.split())
+    return len(query_tokens) > 0 and all(token in title_tokens for token in query_tokens)
+
+
+def _suggest_movie_titles(graph: Graph, movies: list[str], query: str, limit: int = 3) -> list[str]:
+    """Return up to limit likely movie-title suggestions for query."""
+    suggestions = []
+    title_to_key = {}
+    normalized_labels = []
+
+    for movie_key in movies:
+        title = str(graph.get_vertex(movie_key).item)
+        normalized_title = _normalize_title_text(title)
+        if normalized_title != '' and normalized_title not in title_to_key:
+            title_to_key[normalized_title] = movie_key
+            normalized_labels.append(normalized_title)
+
+    normalized_query = _normalize_title_text(query)
+    close = difflib.get_close_matches(normalized_query, normalized_labels, n=limit, cutoff=0.5)
+
+    for normalized_title in close:
+        movie_key = title_to_key[normalized_title]
+        suggestions.append(str(graph.get_vertex(movie_key).item))
+
+    return suggestions
 
 
 def _normalize_genre(genre: str) -> str:
@@ -135,16 +213,21 @@ def _recommendation_mode(graph: Graph) -> None:
         return
 
     print("\nEnter part of a movie title:")
-    search = _normalize_text(input("> "))
+    search = input("> ").strip()
 
     matches = []
     for m in movies:
         label = str(graph.get_vertex(m).item)
-        if search in _normalize_text(label):
+        if _movie_matches_query(label, search):
             matches.append(m)
 
     if not matches:
         print("No matches found")
+        suggestions = _suggest_movie_titles(graph, movies, search)
+        if suggestions:
+            print("Did you mean:")
+            for suggestion in suggestions:
+                print(f"- {suggestion}")
         return
 
     if len(matches) > 1:
@@ -323,10 +406,10 @@ def _visualization_mode(graph: Graph) -> None:
         visualize_graph(graph, max_vertices=300)
     elif choice == '2':
         movies = graph.get_all_vertices(kind='movie')
-        search = _normalize_text(input("Enter movie title: "))
+        search = input("Enter movie title: ").strip()
         matches = []
         for m in movies:
-            if search in _normalize_text(str(graph.get_vertex(m).item)):
+            if _movie_matches_query(str(graph.get_vertex(m).item), search):
                 matches.append(m)
         if matches:
             visualize_graph(graph, center=matches[0], max_vertices=100)

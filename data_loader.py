@@ -64,14 +64,15 @@ def load_imdb_data(min_year: int = 2000,
     movies_with_ratings = _filter_by_votes(ratings_path, movies, min_votes)
     print(f"{len(movies_with_ratings)} with enough votes")
 
+    selected_movies = _select_top_movies(movies_with_ratings, max_movies)
+    print(f"selected {len(selected_movies)} top movies by votes")
+
     print("adding movies to graph...")
     movie_count = 0
     movie_by_tconst = {}
     movie_titles = {}
 
-    for tconst, movie_data in movies_with_ratings.items():
-        if movie_count >= max_movies:
-            break
+    for tconst, movie_data in selected_movies:
 
         rating = movie_data.get('averageRating', 0.0)
         votes = movie_data.get('numVotes', 0)
@@ -228,9 +229,6 @@ def _load_movies(tsv_file: str, min_year: int, max_movies: Optional[int]) -> dic
             genres_idx = -1  # Use -1 to indicate no genres column
 
         for row in reader:
-            if max_movies is not None:
-                if len(movies) >= max_movies * 3:
-                    break
 
             if len(row) <= max(tconst_idx, title_type_idx, primary_title_idx, start_year_idx):
                 continue
@@ -261,6 +259,26 @@ def _load_movies(tsv_file: str, min_year: int, max_movies: Optional[int]) -> dic
             }
 
     return movies
+
+
+def _select_top_movies(movies_with_ratings: dict, max_movies: int) -> list[tuple[str, dict]]:
+    """Return up to max_movies movies ranked by popularity/quality.
+
+    Movies are sorted by votes descending, then rating descending, then title
+    ascending for deterministic tie-breaking.
+
+    Preconditions:
+    - max_movies > 0
+    """
+    ranked = list(movies_with_ratings.items())
+    ranked.sort(
+        key=lambda pair: (
+            -pair[1].get('numVotes', 0),
+            -pair[1].get('averageRating', 0.0),
+            pair[1].get('primaryTitle', '')
+        )
+    )
+    return ranked[:max_movies]
 
 
 def _filter_by_votes(tsv_file: str, movies: dict, min_votes: int) -> dict:
