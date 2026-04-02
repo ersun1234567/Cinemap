@@ -7,3 +7,5 @@ pytest
 # Data visualization and graph processing
 plotly
 networkx
+dash
+dash-cytoscape
