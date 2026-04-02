@@ -32,6 +32,24 @@ def _normalize_text(text: str) -> str:
     return ' '.join(text.strip().lower().split())
 
 
+def _normalize_person_text(text: str) -> str:
+    """Return a punctuation-insensitive normalized person name.
+
+    This keeps alphanumeric characters and spaces, lowercases the text,
+    and collapses repeated whitespace.
+
+    >>> _normalize_person_text("  Saoirse-Ronan  ")
+    'saoirse ronan'
+    """
+    simplified = []
+    for ch in text.lower():
+        if ch.isalnum() or ch.isspace():
+            simplified.append(ch)
+        else:
+            simplified.append(' ')
+    return ' '.join(''.join(simplified).split())
+
+
 def _normalize_title_text(text: str) -> str:
     """Return a punctuation-insensitive normalized title string.
 
@@ -128,10 +146,11 @@ def _normalize_genre(genre: str) -> str:
     return aliases.get(g, g)
 
 
-def _split_csv_input(text: str, is_genre: bool = False) -> list[str]:
+def _split_csv_input(text: str, is_genre: bool = False, is_person: bool = False) -> list[str]:
     """Split a comma-separated input line and normalize each non-empty token.
 
     If is_genre is True, genre aliases are applied during normalization.
+    If is_person is True, punctuation-insensitive person normalization is used.
     Otherwise, standard text normalization is applied to each token.
 
     Returns a list of non-empty, normalized tokens.
@@ -143,7 +162,12 @@ def _split_csv_input(text: str, is_genre: bool = False) -> list[str]:
     """
     result = []
     for value in text.split(','):
-        token = _normalize_genre(value) if is_genre else _normalize_text(value)
+        if is_genre:
+            token = _normalize_genre(value)
+        elif is_person:
+            token = _normalize_person_text(value)
+        else:
+            token = _normalize_text(value)
         if token:
             result.append(token)
     return result
@@ -292,15 +316,15 @@ def _people_mode(graph: Graph) -> None:
     """
     print("\nEnter favorite actors (comma-separated names, e.g., Tom Hanks, Emma Stone):")
     actors_input = input("> ")
-    actors = _split_csv_input(actors_input)
+    actors = _split_csv_input(actors_input, is_person=True)
 
     print("Enter favorite directors (comma-separated names, or press Enter to skip):")
     directors_input = input("> ")
-    directors = _split_csv_input(directors_input)
+    directors = _split_csv_input(directors_input, is_person=True)
 
     print("Enter favorite writers (comma-separated names, or press Enter to skip):")
     writers_input = input("> ")
-    writers = _split_csv_input(writers_input)
+    writers = _split_csv_input(writers_input, is_person=True)
 
     print("Enter favorite genres (comma-separated, e.g., drama, comedy, sci-fi, thriller):")
     print("Tip: sci fi / science fiction / Sci-Fi are all accepted.")
@@ -339,12 +363,12 @@ def _similar_people_mode(graph: Graph) -> None:
         return
 
     print("\nEnter part of a person's name:")
-    search = _normalize_text(input("> "))
+    search = _normalize_person_text(input("> "))
 
     matches = []
     for p in people:
         label = str(graph.get_vertex(p).item)
-        if search in _normalize_text(label):
+        if search in _normalize_person_text(label):
             matches.append(p)
 
     if not matches:
@@ -417,10 +441,10 @@ def _visualization_mode(graph: Graph) -> None:
             print("Movie not found")
     elif choice == '3':
         people = graph.get_all_vertices(kind='person')
-        search = _normalize_text(input("Enter person name: "))
+        search = _normalize_person_text(input("Enter person name: "))
         matches = []
         for p in people:
-            if search in _normalize_text(str(graph.get_vertex(p).item)):
+            if search in _normalize_person_text(str(graph.get_vertex(p).item)):
                 matches.append(p)
         if matches:
             visualize_graph(graph, center=matches[0], max_vertices=100)

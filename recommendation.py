@@ -23,6 +23,21 @@ def _normalize_text(text: str) -> str:
     return ' '.join(text.strip().lower().split())
 
 
+def _normalize_person_text(text: str) -> str:
+    """Return a punctuation-insensitive normalized person name.
+
+    >>> _normalize_person_text('Robert Downey, Jr.')
+    'robert downey jr'
+    """
+    simplified = []
+    for ch in text.lower():
+        if ch.isalnum() or ch.isspace():
+            simplified.append(ch)
+        else:
+            simplified.append(' ')
+    return ' '.join(''.join(simplified).split())
+
+
 def _normalize_genre(genre: str) -> str:
     """Return normalized/canonical genre token.
 
@@ -117,9 +132,9 @@ def recommend_by_people(graph: Graph,
     if preferred_genres is None:
         preferred_genres = []
 
-    favorite_actor_set = {_normalize_text(name) for name in favorite_actors if name.strip() != ''}
-    favorite_director_set = {_normalize_text(name) for name in favorite_directors if name.strip() != ''}
-    favorite_writer_set = {_normalize_text(name) for name in favorite_writers if name.strip() != ''}
+    favorite_actor_set = {_normalize_person_text(name) for name in favorite_actors if name.strip() != ''}
+    favorite_director_set = {_normalize_person_text(name) for name in favorite_directors if name.strip() != ''}
+    favorite_writer_set = {_normalize_person_text(name) for name in favorite_writers if name.strip() != ''}
     preferred_genre_set = {_normalize_genre(genre) for genre in preferred_genres if genre.strip() != ''}
 
     all_movies = graph.get_all_vertices(kind='movie')
@@ -136,11 +151,11 @@ def recommend_by_people(graph: Graph,
         for n in vertex.neighbours:
             if n.kind == 'person':
                 if n.subkind == 'actor':
-                    movie_actors.append(_normalize_text(n.item))
+                    movie_actors.append(_normalize_person_text(n.item))
                 elif n.subkind == 'director':
-                    movie_directors.append(_normalize_text(n.item))
+                    movie_directors.append(_normalize_person_text(n.item))
                 elif n.subkind == 'writer':
-                    movie_writers.append(_normalize_text(n.item))
+                    movie_writers.append(_normalize_person_text(n.item))
 
         for actor in favorite_actor_set:
             if actor in movie_actors:
