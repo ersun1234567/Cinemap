@@ -30,6 +30,21 @@ def _normalize_text(text: str) -> str:
     return ' '.join(text.strip().lower().split())
 
 
+def _normalize_person_text(text: str) -> str:
+    """Return a punctuation-insensitive normalized person name.
+
+    >>> _normalize_person_text('Robert Downey, Jr.')
+    'robert downey jr'
+    """
+    simplified = []
+    for ch in text.lower():
+        if ch.isalnum() or ch.isspace():
+            simplified.append(ch)
+        else:
+            simplified.append(' ')
+    return ' '.join(''.join(simplified).split())
+
+
 def _normalize_genre(genre: str) -> str:
     """Return a normalized/canonical genre token.
 
@@ -256,12 +271,12 @@ def _similar_people_mode(graph: Graph) -> None:
         return
 
     print("\nEnter part of a person's name:")
-    search = _normalize_text(input("> "))
+    search = _normalize_person_text(input("> "))
 
     matches = []
     for p in people:
         label = str(graph.get_vertex(p).item)
-        if search in _normalize_text(label):
+        if search in _normalize_person_text(label):
             matches.append(p)
 
     if not matches:

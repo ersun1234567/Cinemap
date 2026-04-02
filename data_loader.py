@@ -132,6 +132,11 @@ def load_imdb_data(min_year: int = 2000,
         if count >= min_movies_per_person:
             popular_nconsts.add(nconst)
 
+    ranked_popular_nconsts = sorted(
+        popular_nconsts,
+        key=lambda nconst: (-person_movie_count.get(nconst, 0), nconst)
+    )
+
     print(f"{len(popular_nconsts)} people have worked on at least {min_movies_per_person} movies")
 
     print("loading people data")
@@ -142,7 +147,7 @@ def load_imdb_data(min_year: int = 2000,
     person_count = 0
     person_by_nconst = {}
 
-    for nconst in popular_nconsts:
+    for nconst in ranked_popular_nconsts:
         if person_count >= max_people:
             break
         if nconst not in all_people:

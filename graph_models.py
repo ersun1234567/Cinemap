@@ -244,6 +244,23 @@ class Graph:
                 result.append(n.item)
         return result
 
+    def get_neighbour_keys(self, item: Any, kind: str = '') -> list[Any]:
+        """Return neighbour keys of item, optionally filtered by neighbour kind.
+
+        Raise ValueError if item is not a vertex in this graph.
+        """
+        if item not in self._vertices:
+            raise ValueError("vertex not found")
+
+        vertex = self._vertices[item]
+        key_by_vertex = {stored_vertex: key for key, stored_vertex in self._vertices.items()}
+
+        result = []
+        for n in vertex.neighbours:
+            if kind == '' or n.kind == kind:
+                result.append(key_by_vertex[n])
+        return result
+
     def num_vertices(self) -> int:
         """Return the number of vertices in this graph."""
         return len(self._vertices)
@@ -263,6 +280,7 @@ class Graph:
         Nodes in the returned NetworkX graph are the internal graph keys.
         """
         graph_nx = nx.Graph()
+        key_by_vertex = {vertex: key for key, vertex in self._vertices.items()}
 
         count = 0
         for item, vertex in self._vertices.items():
@@ -279,8 +297,9 @@ class Graph:
             count += 1
 
             for neighbour in vertex.neighbours:
-                if neighbour.item in graph_nx.nodes:
-                    graph_nx.add_edge(item, neighbour.item)
+                neighbour_key = key_by_vertex[neighbour]
+                if neighbour_key in graph_nx.nodes and item != neighbour_key:
+                    graph_nx.add_edge(item, neighbour_key)
 
         return graph_nx
 

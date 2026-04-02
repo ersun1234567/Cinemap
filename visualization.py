@@ -62,13 +62,11 @@ def visualize_graph(graph: Graph,
             return
 
         nodes_to_keep = {center}
-        center_vertex = graph.get_vertex(center)
-        first_hop = {n.item for n in center_vertex.neighbours}
+        first_hop = set(graph.get_neighbour_keys(center))
         nodes_to_keep.update(first_hop)
 
         for neighbour_key in first_hop:
-            neighbour_vertex = graph.get_vertex(neighbour_key)
-            nodes_to_keep.update({n.item for n in neighbour_vertex.neighbours})
+            nodes_to_keep.update(graph.get_neighbour_keys(neighbour_key))
 
         graph_nx = nx.Graph()
         for node in nodes_to_keep:
@@ -82,10 +80,9 @@ def visualize_graph(graph: Graph,
                 graph_nx.nodes[node][key] = value
 
         for node in list(graph_nx.nodes):
-            vertex = graph.get_vertex(node)
-            for neighbour in vertex.neighbours:
-                if neighbour.item in graph_nx.nodes and node != neighbour.item:
-                    graph_nx.add_edge(node, neighbour.item)
+            for neighbour_key in graph.get_neighbour_keys(node):
+                if neighbour_key in graph_nx.nodes and node != neighbour_key:
+                    graph_nx.add_edge(node, neighbour_key)
 
     if graph_nx.number_of_nodes() == 0:
         print('no nodes to visualize')
